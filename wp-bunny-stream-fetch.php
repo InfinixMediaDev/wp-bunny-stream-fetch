@@ -160,24 +160,15 @@ function bunny_net_metabox_content($post) {
             document.body.removeChild(input);
         }
 
-        document.addEventListener("DOMContentLoaded", function () {
-            var savedCollection = localStorage.getItem('bunny_net_selected_collection');
-            var collectionDropdown = document.getElementById('bunny_net_collection');
+        document.getElementById('bunny_net_collection').addEventListener('change', function () {
+            var selectedCollection = this.value;
 
-            if (savedCollection) {
-                collectionDropdown.value = savedCollection;
-                fetchVideoInfo(savedCollection);
-            }
-
-            collectionDropdown.addEventListener('change', function () {
-                var selectedCollection = this.value;
-                localStorage.setItem('bunny_net_selected_collection', selectedCollection);
-
-                var videosContainer = document.getElementById('bunny_net_videos_container');
-                videosContainer.innerHTML = ''; // Clear the container before fetching new data
-
-                fetchVideoInfo(selectedCollection);
-            });
+            // Ensure the videosContainer element is empty before fetching new data
+            var videosContainer = document.getElementById('bunny_net_videos_container');
+            videosContainer.innerHTML = '';
+			
+			            // Fetch video information based on the selected collection
+            fetchVideoInfo(selectedCollection);
         });
 
         function fetchVideoInfo(collectionId) {
@@ -197,11 +188,13 @@ function bunny_net_metabox_content($post) {
                     if (response && response.previewVideoIds) {
                         var videoIds = response.previewVideoIds.split(',');
 
+                        // Ensure the videosContainer element is empty before fetching new data
                         var videosContainer = document.getElementById('bunny_net_videos_container');
                         videosContainer.innerHTML = '';
 
                         if (videoIds && videoIds.length > 0) {
-                            videoIds.forEach(videoId => {
+                            videoIds.forEach((videoId, index) => {
+                                // Fetch video details for each video
                                 var videoDetailsUrl = 'https://video.bunnycdn.com/library/<?php echo esc_js($library_id); ?>/videos/' + videoId;
                                 fetch(videoDetailsUrl, options)
                                     .then(response => response.json())
@@ -218,11 +211,11 @@ function bunny_net_metabox_content($post) {
                                         videoInfoContainer.classList.add('bunny-net-info');
 
                                         var inputs = [
-                                            { id: 'thumbnailUrl', label: 'Thumbnail', value: thumbnailUrl },
-                                            { id: 'title', label: 'Title', value: video.title },
-                                            { id: 'videoId', label: 'Video ID', value: video.guid },
-                                            { id: 'hlsPlaylistUrl', label: 'HLS Playlist URL', value: 'https://<?php echo esc_js($cdn_hostname); ?>/' + videoId + '/playlist.m3u8' },
-                                            { id: 'directPlayUrl', label: 'DirectPlay URL', value: 'https://iframe.mediadelivery.net/play/<?php echo esc_js($library_id); ?>/' + video.guid }
+                                            { id: 'thumbnailUrl_' + index, label: 'Thumbnail', value: thumbnailUrl },
+                                            { id: 'title_' + index, label: 'Title', value: video.title },
+                                            { id: 'videoId_' + index, label: 'Video ID', value: video.guid },
+                                            { id: 'hlsPlaylistUrl_' + index, label: 'HLS Playlist URL', value: 'https://<?php echo esc_js($cdn_hostname); ?>/' + videoId + '/playlist.m3u8' },
+                                            { id: 'directPlayUrl_' + index, label: 'DirectPlay URL', value: 'https://iframe.mediadelivery.net/play/<?php echo esc_js($library_id); ?>/' + video.guid }
                                         ];
 
                                         inputs.forEach(input => {
@@ -255,9 +248,11 @@ function bunny_net_metabox_content($post) {
                                     .catch(err => console.error(err));
                             });
                         } else {
+                            // Handle the case when no videos are available in the selected collection
                             videosContainer.innerHTML = 'No videos available in this collection.';
                         }
                     } else {
+                        // Handle the case when there are no previewVideoIds
                         videosContainer.innerHTML = 'No videos available in this collection.';
                     }
                 })
@@ -274,12 +269,3 @@ if (isset($_POST['bunny_net_submit'])) {
     update_option('bunny_net_library_id', sanitize_text_field($_POST['library_id']));
     update_option('bunny_net_cdn_hostname', sanitize_text_field($_POST['cdn_hostname']));
 }
-
-// Enqueue styles and scripts for the admin page
-function enqueue_admin_styles_and_scripts($hook) {
-    if ('toplevel_page_bunny-net-settings' == $hook) {
-        wp_enqueue_style('bunny-net-admin-styles', plugin_dir_url(__FILE__) . 'admin-styles.css');
-    }
-}
-
-add_action('admin_enqueue_scripts', 'enqueue_admin_styles_and_scripts');
